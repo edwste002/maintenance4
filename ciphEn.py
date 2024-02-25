@@ -610,12 +610,16 @@ def encrypt_file_for_storage(filename, encrypted_file_handle, key):
 
     sz = os.path.getsize(filename)
 
-    bytesread = 0    
+    bytesread = 0
+    
     
     lenbinsz = len(bin(sz)[2:])
     lenbinbytesz = len(bin(sz)[2:]) // 8
     paddedbinsz = '0'*((lenbinbytesz*8)-lenbinsz) + (bin(sz)[2:])
-    encrypted_file_handle.write(ciphbytes[0])
+    with open(filename,'rb') as f:
+              bs = f.read()
+              ciphbytes = encrypt_data(bs,key)
+              encrypted_file_handle.write(ciphbytes)
 
 
 
@@ -731,11 +735,18 @@ def get32bitstringFromInteger(i):
 
 def get128bitstringFromBytes(b):
     s = ''
+    if 16 !=len(b):
+        print('not 128 bits')
+        raise
     for i in range(4*4):
         #print('i: ',i)
+        #try:
         sb = str(bin(b[i]))[2:]
         sb = '0'*(8-len(sb)) + sb
         s = s + sb
+        #except Exception:
+        #print(b, sb)
+        #    raise
     return s
 
 def getBytesFromArbitraryInteger(i):
@@ -826,14 +837,16 @@ def encrypt_folder(startpath,prefix,storage_file_name,key):
     #TODO---------------------------------------------------------  text
     #need unicode support for filenames
     #print('----encrypt_folder_step------')
-    
+
+    #print('current_file_header: ',current_file_header)
     file_directory = get_files_directory(startpath,prefix)
     
     #print('file_list-------------',file_directory)
     file_list,dirs = file_directory[0],file_directory[1]
     print(file_list)
+    print('dirs--------------')
     print(dirs)
-    relative_file_name_length,relativepath, rolling_crypted_size_count, crypted_size, sz = file_list[0],file_list[1],file_list[2],file_list[3],file_list[4]
+    #relative_file_name_length,relativepath, rolling_crypted_size_count, crypted_size, sz = file_list[0],file_list[1],file_list[2],file_list[3],file_list[4]
     #print('crypted header size-----',len(text_encrypt(str(file_directory),key)),len(str(file_directory)))
     #s = sum((f[2] for f in file_list))
     file_directory_length = len(str(file_directory))
@@ -844,14 +857,17 @@ def encrypt_folder(startpath,prefix,storage_file_name,key):
             str(file_list_length) + str('\0') + \
             str(dirs_length) + str('\0') +  \
             str(file_directory) + str('\0')
-
-    encrypted_header = text_encrypt_from_bytes_for_header(header,key)
-    encrypted_headers_bytes = bytes([ord(s) for s in encrypted_header])
+    
+    encrypted_header = encrypt_data(header.encode('utf-8'),key)
+    print(encrypted_header)
+    #encrypted_headers_bytes = bytes([ord(s) for s in encrypted_header])
     
     with open(storage_file_name,'wb') as storage_file:
-        storage_file.write(encrypted_headers_bytes)
+        storage_file.write(encrypted_header)
+        print(file_list)
         for current_file_header in file_list:
             #print(current_file_header)
+            print('current_file_header: ',current_file_header)
             relative_file_name_length,relativepath, rolling_crypted_size_count, crypted_size, sz = current_file_header[0],current_file_header[1],current_file_header[2],current_file_header[3],current_file_header[4]
             #print('encrypting--------------',os.path.basename(relativepath))
             encrypt_file_for_storage(prefix + '\\' + relativepath, storage_file, key)
@@ -866,17 +882,17 @@ if encryptOrDecrypt=='e':
     prefix = input('enter folder prefix')
     binfile = input('bin file')
     key = input('enter key')
-    encrypt_folder(folder,prefix,binfile,key)
+    encrypt_folder(folder,prefix,binfile,key.encode(encoding='utf-8'))
     #for i in l:
     #   encrypt_folder('F:\\data\\docs\\' + i, 'F:\\data\\docs', 'docs.' + i +'.bin', key)
 elif encryptOrDecrypt=='d':
     folder = input('enter folder name')
     binfile = input('bin file')
     key = input('enter key')
-    decrypt_folder(folder, binfile, key)
+    decrypt_folder(folder, binfile, key.encode(encoding='utf-8'))
 
 
-
+'''
 data = bytes([123,123,23,34,34,35,36,37,42,42,42,4,342%256,234234%256,342342%256,342342%256,342342%256,5656534%256,53,34,3,55,654%256,654546%256,654%256])
 password = bytes([221,232,242,56,154,24,60,40,46,6,64,156,56,64,6,78,4,6,3,4,142,134])
 print('data: ', data)
@@ -888,4 +904,4 @@ print(v)
 print('--decrypt------')
 print(decrypt_data(v,password))
 print('-----------')
-
+'''
