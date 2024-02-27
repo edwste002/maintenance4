@@ -18,6 +18,21 @@ bits32 = [ i for i in range(32)]
 bits32xor = [ str(i % 2) for i in range(32) ]
 bits128xor = [ str(i % 2) for i in range(128) ] 
 
+def diff(fileList, folder1, folder2):
+    for f in fileList:
+        with open(str(folder1) + '\\' + f, 'rb') as file1, open(str(folder2) + '\\' + f, 'rb') as file2:
+            data1 = file1.read()
+            data2 = file2.read()
+            #print('-------------')
+            #print(data1)
+            #print('-------------')
+            #print(data2)
+
+        if data1 != data2:
+            print(f," Files do not match.")
+        else:
+            print(f," Files match.")
+            
 def xor(a,b):
     #print(type(a), type(b))
     if a=='0':
@@ -54,11 +69,18 @@ def get32bitstringFromInteger(i):
 
 def get128bitstringFromBytes(b):
     s = ''
+    if 16 !=len(b):
+        print('not 128 bits')
+        raise
     for i in range(4*4):
         #print('i: ',i)
+        #try:
         sb = str(bin(b[i]))[2:]
         sb = '0'*(8-len(sb)) + sb
         s = s + sb
+        #except Exception:
+        #print(b, sb)
+        #    raise
     return s
 
 def getBytesFromArbitraryInteger(i):
@@ -126,14 +148,10 @@ def TruffleShuffle128FromBitstring(bitstring128):
         l.append(xor_bits)
     return int(''.join( (l[i] for i in range(4) ) ) , base=2)
 
-
-
 derangementSize = [1, 0, 1, 2, 9, 44, 265, 1854, 14833, 133496, 1334961, 14684570, 176214841, 2290792932, 32071101049, 481066515734, 7697064251745, 130850092279664, 2355301661033953, 44750731559645106, 895014631192902121, 18795307255050944540, 413496759611120779881, 9510425471055777937262, 228250211305338670494289, 5706255282633466762357224, 148362637348470135821287825, 4005791208408693667174771274, 112162153835443422680893595673, 3252702461227859257745914274516, 97581073836835777732377428235481, 3025013288941909109703700275299910, 96800425246141091510518408809597121, 3194414033122656019847107490716704992, 108610077126170304674801654684367969729, 3801352699415960663618057913952878940514, 136848697178974583890250084902303641858505, 5063401795622059603939253141385234748764684, 192409268233638264949691619372638920453057993, 7503961461111892333037973155532917897669261726]
 
 def getDerangementSize(n):
     return derangementSize[n]
-
-#print([getDerangementSize(i) for i in range(40)])
 
 def recurseDerangement(i,iterlist,n):
     #iterlist needs to be list of whole numbers
@@ -194,6 +212,8 @@ def recurseDerangement(i,iterlist,n):
         returnediterlist.insert(0,derangement_item[0])
         returnediterlist.insert(firstPart+1,derangement_item[1])
         return returnediterlist
+
+#--------------------------------------end of derangements----------------------------------------------------------------------
     
 def eee_round(bitsInSelectorFunction128bitsFromBytes, bitsIn32bitsAsBytes, count=0):
     #print('bits:', bitsIn32bitsAsBytes)
@@ -266,9 +286,8 @@ def selectorShuffle( oldSelector, selector128, extra=''):
     return oldSelector
 
 def decrypt_rounds_for_text_size(oldSelector,predata, data):
-    d = predata[0:16] + data[:] + data[0:16]
-    #doesn't work with sizes with 0,0,0,0 in their length
-    zeroBytesString = bytes([0,0,0,0])
+    d = predata[0:16] + data[:] + predata[0:16]
+
     for i in range(16):
         selector128 = d[ (i) * 4 : ((i)*4) + 4*4 ]
         #--TODO extra does nothing ----------------
@@ -283,11 +302,10 @@ def decrypt_rounds_for_text_size(oldSelector,predata, data):
         
     return 0,getArbitraryIntegerFromBytesForTextLength(d[16:32])
 
-
 def encrypt_rounds(oldSelector,predata, data):
     d = predata[0:16] + data[:] + predata[0:16]
     output = bytes()
-    for i in range(len(data)//4):
+    for i in range((len(data)//4)+1):
         selector128 = d[ (i) * 4 : ((i)*4) + 4*4 ]
         #--TODO extra does nothing ----------------
         oldSelector = selectorShuffle( oldSelector, selector128 )
@@ -304,7 +322,7 @@ def encrypt_rounds(oldSelector,predata, data):
 def decrypt_rounds(oldSelector,predata,data):
     d = predata[0:16] + data[:] + predata[0:16]
     output = bytes()
-    for i in range(len(data)//4):
+    for i in range((len(data)//4)+1):
         selector128 = d[ (i) * 4 : ((i)*4) + 4*4 ]
         #--TODO extra does nothing ----------------
         oldSelector = selectorShuffle( oldSelector, selector128 )
@@ -314,7 +332,7 @@ def decrypt_rounds(oldSelector,predata,data):
         b = reverse_eee_round( oldSelector, data32  , i )
         d = d[:(i)*4 + 4*4] +  b + d[((i+1)*4) + 4*4:]
         print('--->oldselector\t:', oldSelector, 'round\t selector128:',selector128)
-        #print('\t','data32:',data32, '\toutput:\t', output)
+        print('\t','data32:',data32, '\toutput:\t', output)
     output = d[16:-16]
     return oldSelector, output
 
@@ -334,8 +352,6 @@ def encrypt_data(data,password):
 
     print('-------------------------------------oldSelector: ', oldSelector) 
     
-    #TODO - fix size issue...very bad-----------------------------
-    #add data size to the front
     szBytes = getBytesFromArbitraryInteger(len(data))
     if len(szBytes)>16:
         print('szOfFile too big')
@@ -345,7 +361,6 @@ def encrypt_data(data,password):
 
     oldSelector, outputText = encrypt_rounds(oldSelector,password[0:16], szBytes + data)
 
-    #add size check for end of data....
     return outputText
 
 def decrypt_data(data,password):
@@ -367,24 +382,7 @@ def decrypt_data(data,password):
     oldSelector, outputText = decrypt_rounds(oldSelector,password[0:16], data)
     print('outputText: ',outputText)
     return outputText[16:16 + sizeOfText]
-#------------------------------------------------------------------------------------------------------------------
-#-------------------- old code pieces
 
-
-def diff(fileList, folder1, folder2):
-    for f in fileList:
-        with open(str(folder1) + '\\' + f, 'rb') as file1, open(str(folder2) + '\\' + f, 'rb') as file2:
-            data1 = file1.read()
-            data2 = file2.read()
-            #print('-------------')
-            #print(data1)
-            #print('-------------')
-            #print(data2)
-
-        if data1 != data2:
-            print(f," Files do not match.")
-        else:
-            print(f," Files match.")
 
 def array_index(arr, indices):
     if len(indices)==0:
@@ -448,9 +446,7 @@ def text_decrypt(text,key):
     return data
 
 def text_decrypt_from_bytes_for_header(text,key):
-    #TODO---------------------------------------------------------  text
-    data = decrypt_data(text,key)
-    
+    data = decrypt_data(text,key)   
     return data
 
 def text_encrypt(text,key):
@@ -567,43 +563,14 @@ def parse_file_list_string(header):
         entry,header = get_next_file_list_parsed_entry(header)
     return l  
 
-'''  
-def decrypt_file_from_storage(start_pos, filename, crypted_filesize, sz, encrypted_locker_filename, key):
-    k = key
-    
-    #split
-    import os
-    #print(filename)
-    #print(os.path.dirname(filename))
-    try:
-        os.makedirs(os.path.dirname(filename))
-    except FileExistsError:
-        print("File already exists",filename)
-        pass
-    except FileNotFoundError:
-        print("File Not Found error",filename)
-        pass
-    
-    with open(encrypted_locker_filename,mode='rb') as f:
-        f.seek(start_pos)
-        
-        with open(filename,mode='wb') as fo:
-
-            for z in range(filechunks):
-                #print(z,fileSz)
-                
-                data = f.read()
-
-                fo.write(data)
-'''
-def decrypt_file_from_storage(data,prefix,relativepath,start,offset,sz,key):
+def decrypt_file_from_storage(data,prefix,relativepath,start,sz,key):
     #split
     import os
     #print(filename)
     #print(os.path.dirname(filename))
     print('prefix:\t',prefix)
     print('path:\t',relativepath)
-    print('offset\t',offset)
+    print('start:\t',start)
     print('sz\t',sz)
     filename = os.path.join(prefix,relativepath)
     print('filename\t',filename)
@@ -637,23 +604,6 @@ def encrypt_file_for_storage(filename, encrypted_file_handle, key):
               print(ciphbytes)
               print('---------------------------------------------------------------------------------')
 
-
-
-def list_folder_files(storage_file_name,key):
-    #TODO---------------------------------------------------------  text
-    header_length, crypt_header_size = get_header_file_sizes(storage_file_name,key)
-    with open(storage_file_name,'rb') as storage_file:
-        storage_file.seek(len(str(header_length))+len(str(crypt_header_size))+2)
-        crypt_header = storage_file.read(crypt_header_size)
-        #print('----------list_folder_files------------')
-        #print('---crypt_header----------------')
-        #print(crypt_header)
-        
-        listOfFiles = decrypt_header(crypt_header,key)
-        #print('------listOfFiles--------------')
-        #print(listOfFiles)
-    return listOfFiles
-
 def get_header_string_val_from_bytes_in_array(t,i):
     l = []
     while t[i]!=0:
@@ -683,7 +633,7 @@ def get_header(storage_file_name,key):
         print('--------dirs_list_length:',dirs_list_length)
         print('--------file_directory_length:',file_directory_length)
         print('--------------------------index:',index)
-        total_encrypted_header_length = index+file_directory_length + 16
+        total_encrypted_header_length = index+file_directory_length + 16 + 1
         print('--------------------------sf:',sf)
         print('text--------')
         print('----------text',text)
@@ -700,140 +650,15 @@ def get_header(storage_file_name,key):
         
     return file_list_length,dirs_list_length,file_directory_length,list_of_files,list_of_dirs_string,total_encrypted_header_length
 
-import math as mp
-import inspect
-import os
-import json
-import sys
-
-key = "test key"
-bits32 = [ i for i in range(32)]
-bits32xor = [ str(i % 2) for i in range(32) ]
-bits128xor = [ str(i % 2) for i in range(128) ] 
-
-def xor(a,b):
-    #print(type(a), type(b))
-    if a=='0':
-        if b=='0':
-            return '0'
-        else:
-            return '1'
-    else:
-        if b=='0':
-            return '1'
-        else:
-            return '0'
-
-
-def get32bitstring(v):
-    v = bin(v)[2:]
-    b = '0'*(32-len(v)) + v
-    return b
-
-def get32bitstringFromBytes(b):
-    s = ''
-    for i in range(4):
-        sb = bin(b[i])[2:]
-        sb = '0'*(8-len(sb)) + sb
-        s = s + sb
-    return s
-
-def get32bitstringFromInteger(i):
-    if (i > (2**32 - 1)):
-        raise
-    sb = bin(i)[2:]
-    sb = '0'*(32-len(sb)) + sb
-    return sb
-
-def get128bitstringFromBytes(b):
-    s = ''
-    if 16 !=len(b):
-        print('not 128 bits')
-        raise
-    for i in range(4*4):
-        #print('i: ',i)
-        #try:
-        sb = str(bin(b[i]))[2:]
-        sb = '0'*(8-len(sb)) + sb
-        s = s + sb
-        #except Exception:
-        #print(b, sb)
-        #    raise
-    return s
-
-def getBytesFromArbitraryInteger(i):
-    #processes bytes in order left to right
-    sb = bin(i)[2:]
-    extra = len(sb) % 8
-    sb = '0' * (8 - len(sb)) + sb
-    l = []
-    for i in range(len(sb)//8):
-        l.append(int(sb[i*8:(i*8)+8],2) )
-    bs = bytes(l)
-    return bs
-
-def getArbitraryIntegerFromBytes(b):
-    #goes backwards...careful
-    v = 0
-    print('<<<<<<<<<<<<<<<<<')
-    print(b)
-    for i in range(len(b)):
-        print('<<<<<<<<<<<<<<<')
-        print(b[-1 * 1])
-        v = (int(b[-1 * i]) * ( 2 ** (8*i) ) ) + v
-    return v
-
-def getArbitraryIntegerFromBytesForTextLength(b):
-    #goes backwards...careful
-    v = 0
-    print('<<<<<<<<<<<<<<<<<')
-    for i in range(len(b)):
-        print('<<<<<<<<<<<<<<<')
-        print(b[-1 * 1])
-        v = (int(b[-1 * i]) * ( 2 ** (8*i) ) ) + v
-    return v
-
-def get128BytesFromBitstring(b):
-    l = []
-    for i in range(4*4):
-        l.append(b[(i*8):(i*8)+8])
-    return bytes(l)
-
-def get128bitstringFromInteger(i):
-    sb = bin(i)[2:]
-    sb = '0'*(128-len(sb)) + sb
-    return sb
-
-def xor_32_bits(a,b):
-    return ''.join([ str(xor(a[i],b[i])) for i in range(32) ])
-
-def xor128BitsFromBytes(a,b):
-    c = get128bitstringFromBytes(a)
-    d = get128bitstringFromBytes(b)
-    return ''.join([ str(xor(c[i],d[i])) for i in range(128) ])
-
-def xor128BitsFromBitString(a,b):
-     return ''.join([ str(xor(a[i],b[i])) for i in range(128) ])
-
-def TruffleShuffle32bitstring(binaryString):
-    xor_bits = xor_32_bits(binaryString, bits32xor)
-    return xor_bits
-
-def TruffleShuffle128FromBitstring(bitstring128):
-    l = []
-    for i in range(4):
-        xor_bits = xor_32_bits(bitstring128[( i * 4*8 ) :  (i * 4 * 8) + 4 * 8 ], bits32xor)
-        l.append(xor_bits)
-    return int(''.join( (l[i] for i in range(4) ) ) , base=2)
-#---------------------
-
+#----------------------------------------------------------------folder functions------------------------
 def decrypt_folder(new_folder_name,prefix,storage_file_name,key):
     #TODO make empty directories
     #TODO figure out how to test for valid directories
     result = get_header(storage_file_name,key)
     #file_list_length,dirs_list_length,file_directory_length,list_of_files,list_of_dirs,total_encrypted_header_length+1
     file_list_length,dirs_list_length,file_directory_length,list_of_files,list_of_dirs,start_offset=result[0],result[1],result[2],result[3],result[4],result[5]
-    count = start_offset
+    count = 0
+    print('count--------------',count)
     data = bytes([0])
     #data,relative_file_name_length,relativepath,offset,sz
     
@@ -850,7 +675,7 @@ def decrypt_folder(new_folder_name,prefix,storage_file_name,key):
         #print('--------------------------------',new_folder_name+relativepath,start_offset)
         print('-------------------file tuple----------------------',file_tuple)
 
-        decrypt_file_from_storage(data, prefix, relativepath, 0,count,crypted_size,key)
+        decrypt_file_from_storage(data, prefix, relativepath,count,crypted_size,key)
         count = count + sz
         #for i in range(10):
         #    decrypt_file_from_storage(start_offset+rolling_crypted_size_count-5+i, new_folder_name+relativepath+str(i), crypted_size, storage_file_name, key)
@@ -880,7 +705,10 @@ def encrypt_folder(startpath,prefix,storage_file_name,key):
             str(file_list_length) + str('\0') + \
             str(dirs_length) + str('\0') +  \
             str(file_directory) + str('\0')
-    
+
+    print('----------------------------------------header-----------------------------------------------------------------')
+    print(header.encode('utf-8'))
+    print('----------------------------------------------------------------')
     encrypted_header = encrypt_data(header.encode('utf-8'),key)
     print('----------------------------------------encrypted header-----------------------------------------------------------------')
     print(encrypted_header)

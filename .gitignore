@@ -2,3 +2,15 @@
 asdf.bin
 00000.bin
 0000000.bin
+*.bin
+asdf/z/asdf.txt
+555
+asdf/z/zzz.txt
+test/z/asdf.txt
+test/z/zzz.txt
+testing50/z/asdf.txt
+testing50/z/zzz.txt
+z - Copy/asdf.txt
+z - Copy/zzz.txt
+z/asdf.txt
+z/zzz.txt
