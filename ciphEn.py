@@ -54,6 +54,10 @@ def get32bitstring(v):
 
 def get32bitstringFromBytes(b):
     s = ''
+    if len(b)<4:
+        print('less than 4 bytes')
+        print(b)
+        raise
     for i in range(4):
         sb = bin(b[i])[2:]
         sb = '0'*(8-len(sb)) + sb
@@ -288,13 +292,13 @@ def selectorShuffle( oldSelector, selector128, extra=''):
 def decrypt_rounds_for_text_size(oldSelector,predata, data):
     d = predata[0:16] + data[:] + predata[0:16]
 
-    for i in range(16):
+    for i in range(5):
         selector128 = d[ (i) * 4 : ((i)*4) + 4*4 ]
         #--TODO extra does nothing ----------------
         oldSelector = selectorShuffle( oldSelector, selector128 )
         
         data32 = d[ ((i)*4) + 4*4 : ((i+1)*4) + 4*4 ]
-        
+        print(i)
         b = reverse_eee_round( oldSelector, data32  , i )
         d = d[:(i)*4 + 4*4] +  b + d[((i+1)*4) + 4*4:]
         print('----decrypt for text rounds size-->oldselector\t:', oldSelector, 'round\t selector128:',selector128)
@@ -411,8 +415,12 @@ def get_files_directory(startpath,remove_prefix=''):
         for file in filenames:
 
             sz = os.path.getsize(os.path.join(dirpath, file))
-    
-            crypted_size = sz + 16
+
+            extra = (sz%4) + 4
+
+
+            crypted_size = sz + 16 + extra
+
 
             relativepath = str(os.path.join(dirpath, file))
             relativepath = os.path.relpath(relativepath,remove_prefix)
@@ -563,7 +571,7 @@ def parse_file_list_string(header):
         entry,header = get_next_file_list_parsed_entry(header)
     return l  
 
-def decrypt_file_from_storage(data,prefix,relativepath,start,sz,key):
+def decrypt_file_from_storage(data,prefix,relativepath,start,crypted_size,key):
     #split
     import os
     #print(filename)
@@ -571,7 +579,7 @@ def decrypt_file_from_storage(data,prefix,relativepath,start,sz,key):
     print('prefix:\t',prefix)
     print('path:\t',relativepath)
     print('start:\t',start)
-    print('sz\t',sz)
+    print('crypted_size\t',crypted_size)
     filename = os.path.join(prefix,relativepath)
     print('filename\t',filename)
     try:
@@ -582,12 +590,12 @@ def decrypt_file_from_storage(data,prefix,relativepath,start,sz,key):
     except FileNotFoundError:
         print("File Not Found error",filename)
         pass
-
-    out = decrypt_data(data[start:start+sz],key)
+    out = decrypt_data(data[start:start+crypted_size],key)
     print('-------------------------decrypted file:', relativepath, '----------------------------------------------')
-    print('unencrypted data',data[start:start+sz])
+    print('unencrypted data',data[start:start+crypted_size])
     print('start:',start)
-    print('size:',sz)
+    #print('size:',sz)
+    print('crypted_size',crypted_size)
     print(out)
     print('-----------------------------------------------------------------------------------------------------------------------')
     with open(filename,mode='wb') as fo:
@@ -676,7 +684,7 @@ def decrypt_folder(new_folder_name,prefix,storage_file_name,key):
         print('-------------------file tuple----------------------',file_tuple)
 
         decrypt_file_from_storage(data, prefix, relativepath,count,crypted_size,key)
-        count = count + sz
+        count = count + crypted_size
         #for i in range(10):
         #    decrypt_file_from_storage(start_offset+rolling_crypted_size_count-5+i, new_folder_name+relativepath+str(i), crypted_size, storage_file_name, key)
         #break
@@ -727,6 +735,7 @@ def encrypt_folder(startpath,prefix,storage_file_name,key):
 
 import sys
 #print(alphalist)
+
 encryptOrDecrypt = input('(e)ncrypt or (d)ecrypt a folder?')
 l=['fixed','other','per']
 
