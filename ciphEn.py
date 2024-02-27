@@ -455,6 +455,7 @@ def text_decrypt(text,key):
 def text_decrypt_from_bytes_for_header(text,key):
     #TODO---------------------------------------------------------  text
     data = decrypt_data(text,key)
+    
     return data
 
 def text_encrypt(text,key):
@@ -570,10 +571,10 @@ def parse_file_list_string(header):
         #print(entry,'entry length-', len(entry[0]))
         entry,header = get_next_file_list_parsed_entry(header)
     return l  
-    
+
+'''  
 def decrypt_file_from_storage(start_pos, filename, crypted_filesize, sz, encrypted_locker_filename, key):
     k = key
-
     
     #split
     import os
@@ -599,23 +600,28 @@ def decrypt_file_from_storage(start_pos, filename, crypted_filesize, sz, encrypt
                 data = f.read()
 
                 fo.write(data)
-        
+'''
+def decrypt_file_from_storage(data,relative_file_name_length,relativepath,offset,sz):
+    #split
+    import os
+    #print(filename)
+    #print(os.path.dirname(filename))
+    filename = os.path.join(relativepath,relative_file_name_length)
+    try:
+        os.makedirs(os.path.dirname(filename))
+    except FileExistsError:
+        print("File already exists",filename)
+        pass
+    except FileNotFoundError:
+        print("File Not Found error",filename)
+        pass
+     
+    with open(filename,mode='wb') as fo:
+        fo.write(data[offset:offset+sz])
                 
 def encrypt_file_for_storage(filename, encrypted_file_handle, key):
     print('encrypting:',filename)
-    #TODO---------------------------------------------------------  text
-    # need a filesize header on encrypted file to deal with length mismatch
-    # pads size to
-    
 
-    sz = os.path.getsize(filename)
-
-    bytesread = 0
-    
-    
-    lenbinsz = len(bin(sz)[2:])
-    lenbinbytesz = len(bin(sz)[2:]) // 8
-    paddedbinsz = '0'*((lenbinbytesz*8)-lenbinsz) + (bin(sz)[2:])
     with open(filename,'rb') as f:
               bs = f.read()
               ciphbytes = encrypt_data(bs,key)
@@ -652,13 +658,12 @@ def get_header_string_val_from_bytes_in_array(t,i):
     return int(''.join(l)),i
 
 def get_header(storage_file_name,key):
-    #TODO---------------------------------------------------------  text
-    #text_decrypt_from_bytes_for_header(text,key)
+    #TODO---------------------------------------------------------  figure out smaller read
     with open(storage_file_name,'rb') as storage_file:
-        sf = storage_file.read(240)
+        sf = storage_file.read()
         text = text_decrypt_from_bytes_for_header(sf,key)
-        print('--------------------------sf:',sf)
-        print(text)
+        #print('--------------------------sf:',sf)
+        #print(text)
         #print(type(text))
         index = 0
         file_directory_length,index = get_header_string_val_from_bytes_in_array(text,index)
@@ -668,12 +673,9 @@ def get_header(storage_file_name,key):
         print('--------dirs_list_length:',dirs_list_length)
         print('--------file_directory_length:',file_directory_length)
         print('--------------------------index:',index)
-        storage_file.seek(0)
         total_encrypted_header_length = index+file_directory_length
-        sf = storage_file.read(total_encrypted_header_length)
         print('--------------------------sf:',sf)
         print('text--------')
-        text = text_decrypt_from_bytes_for_header(sf,key)
         print('----------text',text)
         list_of_files_string = ''.join([alphalist[i] for i in text[index+1:index+1+file_list_length]])
         list_of_dirs_string = ''.join([alphalist[i] for i in text[index+1+file_list_length+2:-2]])    #to account for extra brackets
@@ -817,10 +819,19 @@ def TruffleShuffle128FromBitstring(bitstring128):
 
 def decrypt_folder(new_folder_name,storage_file_name,key):
     #TODO make empty directories
+    #TODO figure out how to test for valid directories
     result = get_header(storage_file_name,key)
     #file_list_length,dirs_list_length,file_directory_length,list_of_files,list_of_dirs,total_encrypted_header_length+1
     file_list_length,dirs_list_length,file_directory_length,list_of_files,list_of_dirs,start_offset=result[0],result[1],result[2],result[3],result[4],result[5]
-
+    count = 0
+    data = bytes([0])
+    #data,relative_file_name_length,relativepath,offset,sz
+    
+    with open(storage_file_name,'rb') as f:
+        f.seek(start_offset)
+        sb = f.read()
+        data = decrypt_data(sb,key)
+    print(data)
     for file_tuple in list_of_files:
         #start_pos, filename, filesize, encrypted_locker_filename, key
         
@@ -828,7 +839,8 @@ def decrypt_folder(new_folder_name,storage_file_name,key):
         
         #print('--------------------------------',new_folder_name+relativepath,start_offset)
         print('-------------------file tuple----------------------',file_tuple)
-        decrypt_file_from_storage(start_offset+rolling_crypted_size_count, new_folder_name+relativepath, crypted_size, sz, storage_file_name, key)
+        count = count + sz
+        decrypt_file_from_storage(data,relative_file_name_length,relativepath,start_offset,count)
         #for i in range(10):
         #    decrypt_file_from_storage(start_offset+rolling_crypted_size_count-5+i, new_folder_name+relativepath+str(i), crypted_size, storage_file_name, key)
         #break
