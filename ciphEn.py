@@ -415,11 +415,8 @@ def get_files_directory(startpath,remove_prefix=''):
         for file in filenames:
 
             sz = os.path.getsize(os.path.join(dirpath, file))
-
-            extra = (sz%4) + 4
-
-
-            crypted_size = sz + 16 + extra
+            
+            crypted_size = (( sz//4 )+1)*4 + 16
 
 
             relativepath = str(os.path.join(dirpath, file))
@@ -641,7 +638,9 @@ def get_header(storage_file_name,key):
         print('--------dirs_list_length:',dirs_list_length)
         print('--------file_directory_length:',file_directory_length)
         print('--------------------------index:',index)
-        total_encrypted_header_length = index+file_directory_length + 16 + 1
+        total_encrypted_header_length = ((index+file_directory_length + 16 + 1)//4 + 1)*4
+
+
         print('--------------------------sf:',sf)
         print('text--------')
         print('----------text',text)
@@ -736,25 +735,46 @@ def encrypt_folder(startpath,prefix,storage_file_name,key):
 import sys
 #print(alphalist)
 
-encryptOrDecrypt = input('(e)ncrypt or (d)ecrypt a folder?')
+encryptOrDecrypt = input('(e)ncrypt or (d)ecrypt a folder or get (p)rint of both?')
 l=['fixed','other','per']
 
 #fix password to beyond 16 length
+ss = b'\xc3/:&\xcc4\xcc\xa7\xa2\xd8G\xec\xa9\x0f/\x0eC\x89\xa5W_$\xa2\xb0\x9b\x1e\xf9S\x107K\xa7\x0cA\x9cE\r\xb0\x01Q\xba\x11\xa4k\xb9\x81\xa8:\x80^\xcb\xe5\x865\x04OjD\xd0\x92h\xacK\xd5\xa9\x01\xf6\xa7\x94P\rM}WA\x7f\xaa\xdfk\xa42\x88S\x1eA\x1e\x88\x02\x10$B\x9aE\x03U\xe0'
+ss2 = b'C\xad:\x0cl\xac\xceR\xad\xa7`\x8e\x03\xceN\x8f\x02\x01\xa1|1\x13\xc1 &H"\xac\x1f\r\xaa\x04\xdb\xdc\xe0\xf8\xd0\xcbw\xa5}\x91\xa3\xa2\xbe:,\x9f\xde\xcc^\x8a\t\xa8NT\xf5tY&\xac\xa4\xd8\x9d@\x1c\xf6:X\x04p\xe6'
 
+binfile = 'eee.bin'
+key = 'theraininspainfallsmainlyintheplain'
+zz = decrypt_data(ss,key.encode(encoding='utf-8'))
+print(zz)
+
+zz2 = decrypt_data(ss2,key.encode(encoding='utf-8'))
+print(zz2)
+             
 if encryptOrDecrypt=='e':
-    folder = input('enter full folder path')
-    prefix = input('enter folder prefix')
-    binfile = input('bin file')
-    key = input('enter key')
-    encrypt_folder(folder,prefix,binfile,key.encode(encoding='utf-8'))
+    
+    target = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\z'
+    prefix = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\'
+    encrypt_folder(target,prefix,binfile,key.encode(encoding='utf-8'))
+    #folder = input('enter full folder path')
+    #prefix = input('enter folder prefix')
+    #binfile = input('bin file')
+    #key = input('enter key')
+    #encrypt_folder(folder,prefix,binfile,key.encode(encoding='utf-8'))
     #for i in l:
     #   encrypt_folder('F:\\data\\docs\\' + i, 'F:\\data\\docs', 'docs.' + i +'.bin', key)
 elif encryptOrDecrypt=='d':
     folder = input('enter folder name')
-    prefix = input('enter folder prefix')
-    binfile = input('bin file')
-    key = input('enter key')
+    prefix = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\folder_test'
+#   binfile = input('bin file')
+#   key = input('enter key')
     decrypt_folder(folder, prefix, binfile, key.encode(encoding='utf-8'))
+#elif encryptOrDecrypt=='p':
+#    target = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\z'
+ #   prefix = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\'
+#    targetprefix = C:\\Users\\na\\Documents\\GitHub\\maintenance4\\
+#   binfile = input('bin file')
+#   key = input('enter key')
+ #   decrypt_folder(folder, prefix, binfile, key.encode(encoding='utf-8'))
 
 
 '''

@@ -1,3 +1,4 @@
-with open('9z.bin','rb') as f:
+with open('eee.bin','rb') as f:
     sb = f.read()
+    print(sb)
     print(sb.hex())
