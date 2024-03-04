@@ -101,21 +101,21 @@ def getBytesFromArbitraryInteger(i):
 def getArbitraryIntegerFromBytes(b):
     #goes backwards...careful
     v = 0
-    print('<<<<<<<<<<<<<<<<<')
-    print(b)
+    #print('<<<<<<<<<<<<<<<<<')
+    #print(b)
     for i in range(len(b)):
-        print('<<<<<<<<<<<<<<<')
-        print(b[-1 * 1])
+        #print('<<<<<<<<<<<<<<<')
+        #print(b[-1 * 1])
         v = (int(b[-1 * i]) * ( 2 ** (8*i) ) ) + v
     return v
 
 def getArbitraryIntegerFromBytesForTextLength(b):
     #goes backwards...careful
     v = 0
-    print('<<<<<<<<<<<<<<<<<')
+    #print('<<<<<<<<<<<<<<<<<')
     for i in range(len(b)):
-        print('<<<<<<<<<<<<<<<')
-        print(b[-1 * 1])
+        #print('<<<<<<<<<<<<<<<')
+        #print(b[-1 * 1])
         v = (int(b[-1 * i]) * ( 2 ** (8*i) ) ) + v
     return v
 
@@ -234,7 +234,7 @@ def eee_round(bitsInSelectorFunction128bitsFromBytes, bitsIn32bitsAsBytes, count
     #print('128 into derangment ', i128)
     #print('eee:\t', b32,  '\t', b128, '\t', i128)
     selected = recurseDerangement( i128, bits32, 32 )
-    print('selected:',selected)
+    #print('selected:',selected)
     l = [ 0 for i in range(32) ]
     for i in range(32):
         l[selected[i]] = b32[i]
@@ -255,7 +255,7 @@ def reverse_eee_round(bitsInSelectorFunction128bitsFromBytes, bitsIn32bitsAsByte
     #print('128 into derangment ', i128)
     #print('eee:\t', b32,  '\t', b128, '\t', i128)
     selected = recurseDerangement( i128, bits32, 32 )
-    print('selected:',selected)
+    #print('selected:',selected)
     
     l = [ 0 for i in range(32) ]
     for i in range(32):
@@ -289,6 +289,18 @@ def selectorShuffle( oldSelector, selector128, extra=''):
     oldSelector = bytes( int(oldSelector[i*8:(i+1)*8],2) for i in range(16) ) 
     return oldSelector
 
+def process_password(password):
+    #password first
+    #then data
+    if len(password)<20:
+        print("password too short")
+        raise
+
+    oldSelector = bytes([ 0 for i in range(16) ] )
+    
+    oldSelector, notused = encrypt_rounds(oldSelector,password[0:16], password)
+    return oldSelector, notused
+
 def decrypt_rounds_for_text_size(oldSelector,predata, data):
     d = predata[0:16] + data[:] + predata[0:16]
 
@@ -298,13 +310,13 @@ def decrypt_rounds_for_text_size(oldSelector,predata, data):
         oldSelector = selectorShuffle( oldSelector, selector128 )
         
         data32 = d[ ((i)*4) + 4*4 : ((i+1)*4) + 4*4 ]
-        print(i)
+        #print(i)
         b = reverse_eee_round( oldSelector, data32  , i )
         d = d[:(i)*4 + 4*4] +  b + d[((i+1)*4) + 4*4:]
-        print('----decrypt for text rounds size-->oldselector\t:', oldSelector, 'round\t selector128:',selector128)
-        print('\t','data32:',data32, '\toutput:\t', d)
+        #print('----decrypt for text rounds size-->oldselector\t:', oldSelector, 'round\t selector128:',selector128)
+        #print('\t','data32:',data32, '\toutput:\t', d)
         
-    return 0,getArbitraryIntegerFromBytesForTextLength(d[16:32])
+    return getArbitraryIntegerFromBytesForTextLength(d[16:32])
 
 def encrypt_rounds(oldSelector,predata, data):
     d = predata[0:16] + data[:] + predata[0:16]
@@ -319,13 +331,14 @@ def encrypt_rounds(oldSelector,predata, data):
         b = eee_round( oldSelector, data32  , i )
         
         output = output + b
-        print('--->oldselector\t:', oldSelector, 'round\t selector128:',selector128)
-        print('\t','data32:',data32, '\toutput:\t', output)
+        #print('--->oldselector\t:', oldSelector, 'round\t selector128:',selector128)
+        #print('\t','data32:',data32, '\toutput:\t', output)
     return oldSelector, output
 
 def decrypt_rounds(oldSelector,predata,data):
     d = predata[0:16] + data[:] + predata[0:16]
     output = bytes()
+    print('data length:-------------------------------------------------------',(len(data)//4)+1)
     for i in range((len(data)//4)+1):
         selector128 = d[ (i) * 4 : ((i)*4) + 4*4 ]
         #--TODO extra does nothing ----------------
@@ -335,8 +348,9 @@ def decrypt_rounds(oldSelector,predata,data):
         
         b = reverse_eee_round( oldSelector, data32  , i )
         d = d[:(i)*4 + 4*4] +  b + d[((i+1)*4) + 4*4:]
-        print('--->oldselector\t:', oldSelector, 'round\t selector128:',selector128)
-        print('\t','data32:',data32, '\toutput:\t', output)
+        #print('--->oldselector\t:', oldSelector, 'round\t selector128:',selector128)
+        #print(i)
+        #print('\t','data32:',data32, '\toutput:\t', output)
     output = d[16:-16]
     return oldSelector, output
 
@@ -344,46 +358,35 @@ def encrypt_data(data,password):
     #predata needs 16 length to work
     #password first
     #then data
-    if len(password)<20:
-        print("password too short")
-        raise
-
-    oldSelector = bytes([ 0 for i in range(16) ] )
+    oldSelector, notused = process_password(password)
     outputsizetext = bytes([])
     outputtext = bytes([])
-    
-    oldSelector, notused = encrypt_rounds(oldSelector,password[0:16], password)
 
-    print('-------------------------------------oldSelector: ', oldSelector) 
+
+    #print('-------------------------------------oldSelector: ', oldSelector) 
     
     szBytes = getBytesFromArbitraryInteger(len(data))
     if len(szBytes)>16:
         print('szOfFile too big')
     szBytes = szBytes + (16 - len(szBytes)) * bytes([0])
-    print('szBytes:', szBytes)
-    print('length of szBytes:', len(szBytes))
+    #print('szBytes:', szBytes)
+    #print('length of szBytes:', len(szBytes))
 
     oldSelector, outputText = encrypt_rounds(oldSelector,password[0:16], szBytes + data)
 
     return outputText
 
+
+
 def decrypt_data(data,password):
-    #password first
-    #then data
-    if len(password)<20:
-        print("password too short")
-        raise
-    
     output = bytes()
-    oldSelector = bytes([ 0 for i in range(16) ] )
-    
-    oldSelector, notused = encrypt_rounds(oldSelector,password[0:16], password)
+    oldSelector, notused = process_password(password)
 
     print('--------------------------------------decrypt for text size oldSelector: ', oldSelector) 
     #limits text size by 2**(8*100)
-    noSelector, sizeOfText = decrypt_rounds_for_text_size(oldSelector,password[0:16], data[0:100])
+    sizeOfText = decrypt_rounds_for_text_size(oldSelector,password[0:16], data[0:64])
     print('\tsizeOfText: ', sizeOfText)
-    oldSelector, outputText = decrypt_rounds(oldSelector,password[0:16], data)
+    oldSelector, outputText = decrypt_rounds(oldSelector,password[0:16], data[0:32+sizeOfText])
     print('outputText: ',outputText)
     return outputText[16:16 + sizeOfText]
 
@@ -606,7 +609,7 @@ def encrypt_file_for_storage(filename, encrypted_file_handle, key):
               ciphbytes = encrypt_data(bs,key)
               print('-----------------encrypting file:',filename,'-----------------------')
               encrypted_file_handle.write(ciphbytes)
-              print(ciphbytes)
+              #print(ciphbytes)
               print('---------------------------------------------------------------------------------')
 
 def get_header_string_val_from_bytes_in_array(t,i):
@@ -622,14 +625,13 @@ def get_header_string_val_from_bytes_in_array(t,i):
     #print(l)
     return int(''.join(l)),i
 
-def get_header(storage_file_name,key):
-    #TODO---------------------------------------------------------  figure out smaller read
+def get_header(oldSelector, storage_file_name,key):
     with open(storage_file_name,'rb') as storage_file:
         sf = storage_file.read()
-        text = text_decrypt_from_bytes_for_header(sf,key)
-        #print('--------------------------sf:',sf)
-        #print(text)
-        #print(type(text))
+        headerLength = decrypt_rounds_for_text_size(sf,key,sf[0:64])
+        text = text_decrypt_from_bytes_for_header(sf[0:32 + headerLength])
+        print('--------------------------header:',text)
+        print(text)
         index = 0
         file_directory_length,index = get_header_string_val_from_bytes_in_array(text,index)
         file_list_length,index = get_header_string_val_from_bytes_in_array(text,index)
@@ -661,7 +663,10 @@ def get_header(storage_file_name,key):
 def decrypt_folder(new_folder_name,prefix,storage_file_name,key):
     #TODO make empty directories
     #TODO figure out how to test for valid directories
-    result = get_header(storage_file_name,key)
+    print('!!!!!!!!!!!!!!!!!!!')
+    oldSelector = bytes([ 0 for i in range(16) ] )
+    result = get_header(oldSelector, storage_file_name, key)
+    print('@@@@@@@@@@')
     #file_list_length,dirs_list_length,file_directory_length,list_of_files,list_of_dirs,total_encrypted_header_length+1
     file_list_length,dirs_list_length,file_directory_length,list_of_files,list_of_dirs,start_offset=result[0],result[1],result[2],result[3],result[4],result[5]
     count = 0
@@ -739,21 +744,32 @@ encryptOrDecrypt = input('(e)ncrypt or (d)ecrypt a folder or get (p)rint of both
 l=['fixed','other','per']
 
 #fix password to beyond 16 length
+text = b'abcdefghijklmnopqrstuvwxyz0123456789\r\nqwerasdfzxcv\r\nuiopjkl;,m/.\r\ntesttesttestzzzzzzzzzz'
 ss = b'\xc3/:&\xcc4\xcc\xa7\xa2\xd8G\xec\xa9\x0f/\x0eC\x89\xa5W_$\xa2\xb0\x9b\x1e\xf9S\x107K\xa7\x0cA\x9cE\r\xb0\x01Q\xba\x11\xa4k\xb9\x81\xa8:\x80^\xcb\xe5\x865\x04OjD\xd0\x92h\xacK\xd5\xa9\x01\xf6\xa7\x94P\rM}WA\x7f\xaa\xdfk\xa42\x88S\x1eA\x1e\x88\x02\x10$B\x9aE\x03U\xe0'
 ss2 = b'C\xad:\x0cl\xac\xceR\xad\xa7`\x8e\x03\xceN\x8f\x02\x01\xa1|1\x13\xc1 &H"\xac\x1f\r\xaa\x04\xdb\xdc\xe0\xf8\xd0\xcbw\xa5}\x91\xa3\xa2\xbe:,\x9f\xde\xcc^\x8a\t\xa8NT\xf5tY&\xac\xa4\xd8\x9d@\x1c\xf6:X\x04p\xe6'
 
 binfile = 'eee.bin'
 key = 'theraininspainfallsmainlyintheplain'
+
+'''
 zz = decrypt_data(ss,key.encode(encoding='utf-8'))
 print(zz)
 
 zz2 = decrypt_data(ss2,key.encode(encoding='utf-8'))
 print(zz2)
-             
+
+zz3 = encrypt_data(text,key.encode(encoding='utf-8'))
+print(zz3)
+
+print('-------')
+zz4 = decrypt_data(zz3,key.encode(encoding='utf-8'))
+print(zz4)
+'''
+
 if encryptOrDecrypt=='e':
     
-    target = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\z'
-    prefix = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\'
+    target = 'D:\\data\\test\\'
+    prefix = 'D:\\data\\'
     encrypt_folder(target,prefix,binfile,key.encode(encoding='utf-8'))
     #folder = input('enter full folder path')
     #prefix = input('enter folder prefix')
@@ -764,7 +780,7 @@ if encryptOrDecrypt=='e':
     #   encrypt_folder('F:\\data\\docs\\' + i, 'F:\\data\\docs', 'docs.' + i +'.bin', key)
 elif encryptOrDecrypt=='d':
     folder = input('enter folder name')
-    prefix = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\folder_test'
+    prefix = 'D:\\data\\test_out\\'
 #   binfile = input('bin file')
 #   key = input('enter key')
     decrypt_folder(folder, prefix, binfile, key.encode(encoding='utf-8'))
@@ -777,16 +793,3 @@ elif encryptOrDecrypt=='d':
  #   decrypt_folder(folder, prefix, binfile, key.encode(encoding='utf-8'))
 
 
-'''
-data = bytes([123,123,23,34,34,35,36,37,42,42,42,4,342%256,234234%256,342342%256,342342%256,342342%256,5656534%256,53,34,3,55,654%256,654546%256,654%256])
-password = bytes([221,232,242,56,154,24,60,40,46,6,64,156,56,64,6,78,4,6,3,4,142,134])
-print('data: ', data)
-print(len(data))
-
-print('---encrypt----')
-v = encrypt_data(data,password)
-print(v)
-print('--decrypt------')
-print(decrypt_data(v,password))
-print('-----------')
-'''
