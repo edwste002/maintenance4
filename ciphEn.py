@@ -343,6 +343,8 @@ def decrypt_rounds(oldSelector,predata,data):
     #print('data length in bytes:-------------------------------------------------------',(len(data)//4)+1)
 
     for i in range((len(data)//4)+1):
+        if i%1000==0:
+            print('.',end='')
         selector128 = d[ (i) * 4 : ((i)*4) + 4*4 ]
         #--TODO extra does nothing ----------------
         oldSelector = selectorShuffle( oldSelector, selector128 )
@@ -753,7 +755,7 @@ ss = b'\xc3/:&\xcc4\xcc\xa7\xa2\xd8G\xec\xa9\x0f/\x0eC\x89\xa5W_$\xa2\xb0\x9b\x1
 ss2 = b'C\xad:\x0cl\xac\xceR\xad\xa7`\x8e\x03\xceN\x8f\x02\x01\xa1|1\x13\xc1 &H"\xac\x1f\r\xaa\x04\xdb\xdc\xe0\xf8\xd0\xcbw\xa5}\x91\xa3\xa2\xbe:,\x9f\xde\xcc^\x8a\t\xa8NT\xf5tY&\xac\xa4\xd8\x9d@\x1c\xf6:X\x04p\xe6'
 
 binfile = 'eee.bin'
-key = 'theraininspainfallsmainlyintheplain'
+key = 'combinationpizzahutandtacobellandkittycatclubandlackofkentuckyfriedchicken69'
 
 '''
 zz = decrypt_data(ss,key.encode(encoding='utf-8'))
@@ -772,9 +774,10 @@ print(zz4)
 
 if encryptOrDecrypt=='e':
     
-    target = 'D:\\data\\test\\'
-    prefix = 'D:\\data\\'
-    encrypt_folder(target,prefix,binfile,key.encode(encoding='utf-8'))
+    target = 'U:\\code\\asm_stuff\\chunkD-F'
+    prefix = 'U:\\code\\asm_stuff\\'
+    storagefile = 'U:\\code\\asm_stuff\\asm_stuff_chunkD-F.sto'
+    encrypt_folder(target,prefix,storagefile,key.encode(encoding='utf-8'))
     #folder = input('enter full folder path')
     #prefix = input('enter folder prefix')
     #binfile = input('bin file')
@@ -784,10 +787,11 @@ if encryptOrDecrypt=='e':
     #   encrypt_folder('F:\\data\\docs\\' + i, 'F:\\data\\docs', 'docs.' + i +'.bin', key)
 elif encryptOrDecrypt=='d':
     folder = input('enter folder name')
-    prefix = 'D:\\data\\test_out\\'
-#   binfile = input('bin file')
-#   key = input('enter key')
-    decrypt_folder(folder, prefix, binfile, key.encode(encoding='utf-8'))
+    target = 'U:\\code\\asm_stuff\\vcxz'
+    prefix = 'U:\\code\\asm_stuff\\zxcv'
+    storagefile = 'U:\\code\\asm_stuff\\asm_stuff_chunkD-F.sto'
+    #encrypt_folder(target,prefix,storagefile,key.encode(encoding='utf-8'))
+    decrypt_folder(folder, prefix, storagefile, key.encode(encoding='utf-8'))
 #elif encryptOrDecrypt=='p':
 #    target = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\z'
  #   prefix = 'C:\\Users\\na\\Documents\\GitHub\\maintenance4\\'
