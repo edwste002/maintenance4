@@ -118,8 +118,7 @@ def get128bitstringFromBytes(b):
         #    raise
     return s
 
-def get16BytesFromArbitraryInteger(i):
-    #getBytesFromArbitraryInteger
+def getBytesFromArbitraryInteger(i):
     #processes bytes in order left to right
     sb = bin(i)[2:]
     extra = len(sb) % 8
@@ -130,11 +129,27 @@ def get16BytesFromArbitraryInteger(i):
     for i in range(len(sb)//8):
         l.append(int(sb[i*8:(i*8)+8],2) )
     bs = bytes(l)
-    bs = (16 - len(bs)) * bytes([0]) + bs
     return bs
 
 def getArbitraryIntegerFromBytes(b):
-    v = int(b.hex(),base=16)
+    #goes backwards...careful
+    v = 0
+    #print('<<<<<<<<<<<<<<<<<')
+    #print(b)
+    for i in range(len(b)):
+        #print('<<<<<<<<<<<<<<<')
+        #print(b[-1 * 1])
+        v = (int(b[-1 * i]) * ( 2 ** (8*i) ) ) + v
+    return v
+
+def getArbitraryIntegerFromBytesForTextLength(b):
+    #goes backwards...careful
+    v = 0
+    #print('<<<<<<<<<<<<<<<<<')
+    for i in range(len(b)):
+        #print('<<<<<<<<<<<<<<<')
+        #print(b[-1 * 1])
+        v = (int(b[-1 * i]) * ( 2 ** (8*i) ) ) + v
     return v
 
 def get128BytesFromBitstring(b):
@@ -309,8 +324,6 @@ def encrypt_rounds(oldSelector,predata, data):
     output = bytes()
 
     for i in range((len(data)//4)+1):
-        if i%1000==0:
-            print('.',end='')
         selector128 = d[ (i) * 4 : ((i)*4) + 4*4 ]
         #--TODO extra does nothing ----------------
         oldSelector = selectorShuffle( oldSelector, selector128 )
@@ -361,7 +374,7 @@ def decrypt_rounds_for_text_size(oldSelector,predata, data):
         #print('----decrypt for text rounds size-->oldselector\t:', oldSelector, 'round\t selector128:',selector128)
         #print('\t','data32:',data32, '\toutput:\t', d)
         
-    return getArbitraryIntegerFromBytes(d[16:32])
+    return getArbitraryIntegerFromBytesForTextLength(d[16:32])
 
 #-------------------------------------------non primitive data functions
 
@@ -388,9 +401,10 @@ def encrypt_data(data,password):
 
     #print('-------------------------------------oldSelector: ', oldSelector) 
     
-    szBytes = get16BytesFromArbitraryInteger(len(data))
+    szBytes = getBytesFromArbitraryInteger(len(data))
     if len(szBytes)>16:
         print('szOfFile too big')
+    szBytes = szBytes + (16 - len(szBytes)) * bytes([0])
     print('length of data', len(data))
     print('szBytes:', szBytes)
     print('length of szBytes:', len(szBytes))
@@ -619,7 +633,7 @@ def get_header(oldSelector, storage_file_name,key):
         sf = storage_file.read()
         oldSelector = process_password(key)
         headerLength = decrypt_rounds_for_text_size(oldSelector,key,sf[0:64])
-        text = text_decrypt_from_bytes_for_header(sf[0:16 + headerLength],key)
+        text = text_decrypt_from_bytes_for_header(sf[0:16 + headerLength],key,)
         print('--------------------------header:',text)
         print(text)
         index = 0
@@ -759,12 +773,12 @@ print(zz4)
 '''
 
 if encryptOrDecrypt=='e':
-    folder = input('enter full folder path')    
-    target = 'U:\\code\\asm_stuff\\' + folder
+    
+    target = 'U:\\code\\asm_stuff\\chunkD-F'
     prefix = 'U:\\code\\asm_stuff\\'
-    storagefile = 'U:\\code\\asm_stuff\\test5.sto'
+    storagefile = 'U:\\code\\asm_stuff\\asm_stuff_chunkD-F.sto'
     encrypt_folder(target,prefix,storagefile,key.encode(encoding='utf-8'))
-
+    #folder = input('enter full folder path')
     #prefix = input('enter folder prefix')
     #binfile = input('bin file')
     #key = input('enter key')
@@ -773,8 +787,9 @@ if encryptOrDecrypt=='e':
     #   encrypt_folder('F:\\data\\docs\\' + i, 'F:\\data\\docs', 'docs.' + i +'.bin', key)
 elif encryptOrDecrypt=='d':
     folder = input('enter folder name')
-    prefix = 'U:\\code\\asm_stuff\\testing'
-    storagefile = 'U:\\code\\asm_stuff\\test5.sto'
+    target = 'U:\\code\\asm_stuff\\vcxz'
+    prefix = 'U:\\code\\asm_stuff\\zxcv'
+    storagefile = 'U:\\code\\asm_stuff\\asm_stuff_chunkD-F.sto'
     #encrypt_folder(target,prefix,storagefile,key.encode(encoding='utf-8'))
     decrypt_folder(folder, prefix, storagefile, key.encode(encoding='utf-8'))
 #elif encryptOrDecrypt=='p':
