@@ -4,6 +4,8 @@ import os
 import json
 import sys
 
+alpha = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+alpha = ''.join(sorted(list(alpha)))
 #----------------------look at later---??
 def get_header_string_val_from_bytes_in_array(t,i):
     l = []
@@ -126,7 +128,7 @@ def get16BytesFromArbitraryInteger(i):
 
     sb = '0' * (8 - extra) + sb
     l = []
-    print('len of bytes from arb integer:',len(sb))
+    #print('len of bytes from arb integer:',len(sb))
     for i in range(len(sb)//8):
         l.append(int(sb[i*8:(i*8)+8],2) )
     bs = bytes(l)
@@ -429,12 +431,12 @@ def get_files_directory(startpath,remove_prefix=''):
     for (dirpath, dirnames, filenames) in os.walk(startpath):
         if not dirpath in dirnames:
             dirpaths.append([len(dirpath.removeprefix(remove_prefix)),dirpath.removeprefix(remove_prefix)])
+        sorted(filenames)
         for file in filenames:
 
             sz = os.path.getsize(os.path.join(dirpath, file))
             
             crypted_size = (( sz//4 )+1)*4 + 16
-
 
             relativepath = str(os.path.join(dirpath, file))
             relativepath = os.path.relpath(relativepath,remove_prefix)
@@ -443,6 +445,75 @@ def get_files_directory(startpath,remove_prefix=''):
             rolling_crypted_size_count += crypted_size
             
     return [listOfFiles,dirpaths]
+
+#startpath,prefix,segmentsize,iterstart,relativepath
+def get_files_directory_in_chunks(startpath,remove_prefix='',sizeOfFiles=-1,iterstart=None,startfile='',startAfterfile=False):
+    #TODO---------------------------------------------------------  text
+    #walk file directory making a relative path list of each file
+    if not os.path.isdir(startpath):
+        print(startpath,remove_prefix,' is not a directory.')
+        return False
+    relativepath=''
+    listOfFiles = []
+    dirpaths = []
+    rolling_count = 0
+
+    listOfFiles = []
+    rolling_crypted_size_count = 0
+    chunksize = 1024*1024
+    if iterstart==None:
+        print('iterator not defined')
+        raise
+    #print('files')
+    print('iterstart')
+    print(iterstart)
+    if startfile != '' and startAfterfile==False:
+        for (dirpath, dirnames, filenames) in iterstart:#!----place
+            if not dirpath in dirnames:
+                dirpaths.append([len(dirpath.removeprefix(remove_prefix)),dirpath.removeprefix(remove_prefix)])
+            sorted(filenames)
+            print('filenames------:',filenames)
+            #z=input()
+            if startfile not in filenames:
+                print("File Not Found In Directory:", startfile,dirpath, dirnames)
+                raise
+            else:
+                idx = filenames.index(startfile)
+                if startAfterfile==True:
+                    idx = idx + 1
+                    
+                filenames = filename[idx:]
+            relativepath = ''
+            for file in filenames:
+
+                relativepath = str(os.path.join(dirpath, file))
+                relativepath = os.path.relpath(relativepath,remove_prefix)
+                #!---place
+                #if relativepath==d
+    #elif startfile:
+
+    for (dirpath, dirnames, filenames) in iterstart:
+        if not dirpath in dirnames:
+            dirpaths.append([len(dirpath.removeprefix(remove_prefix)),dirpath.removeprefix(remove_prefix)])
+        sorted(filenames)
+        print('filenames')
+        print(filenames)
+        #z=input()
+        for file in filenames:
+            sz = os.path.getsize(os.path.join(dirpath, file))
+            
+            crypted_size = (( sz//4 )+1)*4 + 16
+
+            relativepath = str(os.path.join(dirpath, file))
+            relativepath = os.path.relpath(relativepath,remove_prefix)
+
+            listOfFiles += [ [len(relativepath),relativepath, rolling_crypted_size_count, crypted_size, sz] ]
+            rolling_crypted_size_count += crypted_size
+            
+            if rolling_crypted_size_count>sizeOfFiles and sizeOfFiles==-1:
+                return [iterstart,listOfFiles,dirpaths,relativepath]
+
+    return [iterstart,listOfFiles,dirpaths,relativepath]
 
 
 def text_decrypt(text,key):
@@ -497,14 +568,14 @@ def decrypt_file_from_storage(storage_file,prefix,relativepath,start,crypted_siz
         fo.write(out)
                 
 def encrypt_file_for_storage(filename, encrypted_file_handle, key):
-    print('encrypting:',filename)
+    #print('encrypting:',filename)
 
     with open(filename,'rb') as f:
               bs = f.read()
               ciphbytes = encrypt_data(bs,key)
-              print('-----------------encrypting file:',filename,'-----------------------')
+              #print('-----------------encrypting file:',filename,'-----------------------')
               encrypted_file_handle.write(ciphbytes)
-              print('---------------------------------------------------------------------------------')
+              #print('---------------------------------------------------------------------------------')
 
 #------------------------------------------------------------------folder functions
 
@@ -726,8 +797,90 @@ def encrypt_folder(startpath,prefix,storage_file_name,key):
             #print(current_file_header)
             print('current_file_header: ',current_file_header)
             relative_file_name_length,relativepath, rolling_crypted_size_count, crypted_size, sz = current_file_header[0],current_file_header[1],current_file_header[2],current_file_header[3],current_file_header[4]
+            print('encrypting--------------',os.path.basename(relativepath))
+            encrypt_file_for_storage(prefix + '\\' + relativepath, storage_file, key)
+
+def nextFileCount(valuestring):
+    if valuestring=='':
+        return '0'
+    if  valuestring[-1] == alpha[-1]:
+        return valuestring + alpha[0]
+    else:
+        idx = alpha.index(valuestring[-1])
+        return str(valuestring[0:-1] + alpha[idx+1])
+
+def encrypt_folder_in_chunks_wrapper(startpath,prefix,storage_file_name,key,segmentsize):
+    if not os.path.isdir(startpath):
+        print(startpath,' is not a directory.')
+        return False
+    directoryWalker = iter(os.walk(startpath))
+    nextFileCountString = '0'
+    startfile = ''
+    #print('-----------dir walker-----------------')
+    #print(list(directoryWalker))
+    for i in range(9999):
+        #needs to spit out startfile on return
+        encrypt_folder_in_chunks(startpath,prefix,storage_file_name + nextFileCountString,key,directoryWalker,segmentsize)
+        nextFileCountString = nextFileCount(nextFileCountString)
+        #print(directoryWalker)
+        if directoryWalker==('','',''):
+            break
+        
+    print('File size limit reached!')
+    raise
+    
+def encrypt_folder_in_chunks(startpath,prefix,storage_file_name,key,iterstart,segmentsize,relativepath=''):
+    #TODO add filesize / exist check
+    #TODO add something on the end of files to indicate completion
+    #TODO---------------------------------------------------------  text
+    #need unicode support for filenames
+    #print('----encrypt_folder_step------')
+
+    #print('current_file_header: ',current_file_header)
+    #TODO path mismatch error possible....
+    print(iterstart)
+    (nextiter,file_list,file_directory,relativepath) = get_files_directory_in_chunks(startpath,prefix,segmentsize,iterstart,relativepath)
+    get_files_directory_in_chunks(startpath,prefix,segmentsize,iterstart,startAfterfile=False)
+    #file_directory = get_files_directory(startpath,prefix)
+    
+    #print('file_list-------------',file_directory, nextiter, relativepath)
+    dirs = file_directory
+    print(file_list)
+    print(dirs)
+    #print('dirs--------------')
+    
+    #z = input()
+    #relative_file_name_length,relativepath, rolling_crypted_size_count, crypted_size, sz = file_list[0],file_list[1],file_list[2],file_list[3],file_list[4]
+    #print('crypted header size-----',len(text_encrypt(str(file_directory),key)),len(str(file_directory)))
+    #s = sum((f[2] for f in file_list))
+    file_directory_length = len(str(file_directory))
+    file_list_length = len(str(file_list))
+    dirs_length = len(str(dirs))
+
+    header = str(file_directory_length) + str('\0') + \
+            str(file_list_length) + str('\0') + \
+            str(dirs_length) + str('\0') +  \
+            str(file_directory) + str('\0')
+
+    #print('----------------------------------------header-----------------------------------------------------------------')
+    #print(header.encode('utf-8'))
+    #print('----------------------------------------------------------------')
+    encrypted_header = encrypt_data(header.encode('utf-8'),key)
+    #print('----------------------------------------encrypted header-----------------------------------------------------------------')
+    #print(encrypted_header)
+    #print('---------------------------------------end of encrypted header------------------------------------------------------')
+    #encrypted_headers_bytes = bytes([ord(s) for s in encrypted_header])
+    
+    with open(storage_file_name,'wb') as storage_file:
+        storage_file.write(encrypted_header)
+        print(file_list)
+        for current_file_header in file_list:
+            #print(current_file_header)
+            #print('current_file_header: ',current_file_header)
+            relative_file_name_length,relativepath, rolling_crypted_size_count, crypted_size, sz = current_file_header[0],current_file_header[1],current_file_header[2],current_file_header[3],current_file_header[4]
             #print('encrypting--------------',os.path.basename(relativepath))
             encrypt_file_for_storage(prefix + '\\' + relativepath, storage_file, key)
+    return relativepath
 
 import sys
 #print(alphalist)
@@ -758,17 +911,21 @@ zz4 = decrypt_data(zz3,key.encode(encoding='utf-8'))
 print(zz4)
 '''
 
+
+
+chunkSize = 1024*1024*50
+
 if encryptOrDecrypt=='e':
-    folder = input('enter full folder path')    
-    target = 'U:\\code\\asm_stuff\\' + folder
-    prefix = 'U:\\code\\asm_stuff\\'
-    storagefile = 'U:\\code\\asm_stuff\\test5.sto'
-    encrypt_folder(target,prefix,storagefile,key.encode(encoding='utf-8'))
+    folder = input('enter full folder path')
+    target = 'U:\\code\\' + folder
+    prefix = 'U:\\code\\'
+    storagefile = 'U:\\code\\test'
+    encrypt_folder_in_chunks_wrapper(target,prefix,storagefile,key.encode(encoding='utf-8'),chunkSize)
 
     #prefix = input('enter folder prefix')
     #binfile = input('bin file')
     #key = input('enter key')
-    #encrypt_folder(folder,prefix,binfile,key.encode(encoding='utf-8'))
+    #encrypt_folder(target,prefix,binfile,key.encode(encoding='utf-8'))
     #for i in l:
     #   encrypt_folder('F:\\data\\docs\\' + i, 'F:\\data\\docs', 'docs.' + i +'.bin', key)
 elif encryptOrDecrypt=='d':
@@ -785,4 +942,4 @@ elif encryptOrDecrypt=='d':
 #   key = input('enter key')
  #   decrypt_folder(folder, prefix, binfile, key.encode(encoding='utf-8'))
 
-
+    
